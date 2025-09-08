@@ -17,6 +17,8 @@ import {
   LogOut,
   Truck,
   Droplets,
+  FuelIcon,
+  Fuel,
 } from "lucide-react";
 
 // Format role: ADMIN_PUSAT -> Admin Pusat
@@ -90,6 +92,7 @@ export default function Sidebar() {
       icon: Package,
     },
     { name: "Unit Pump", path: "/supervisor/pump-units", icon: FileText },
+    { name: "Nozzle ", path: "/supervisor/nozzles", icon: Fuel },
   ];
 
   return (

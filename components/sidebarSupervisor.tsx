@@ -89,6 +89,7 @@ export default function Sidebar() {
       path: "/supervisor/stock-deliveries",
       icon: Package,
     },
+    { name: "Unit Pump", path: "/supervisor/pump-units", icon: FileText },
   ];
 
   return (

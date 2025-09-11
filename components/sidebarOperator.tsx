@@ -75,34 +75,10 @@ export default function Sidebar() {
   };
 
   const menuItems = [
-    { name: "Dashboard", path: "/supervisor/dashboard", icon: LayoutDashboard },
-    { name: "Tangki Spbu", path: "/supervisor/tanks", icon: Droplets },
+    { name: "Dashboard", path: "/operator/dashboard", icon: LayoutDashboard },
     {
-      name: "Tank Deliveries",
-      path: "/supervisor/tank-deliveries",
-      icon: Truck,
-    },
-    {
-      name: "Kualitas BBM",
-      path: "/supervisor/fuel-qualities",
-      icon: ClipboardCheck,
-    },
-    {
-      name: "Stock Deliveries",
-      path: "/supervisor/stock-deliveries",
-      icon: Package,
-    },
-    { name: "Unit Pump", path: "/supervisor/pump-units", icon: FileText },
-    { name: "Nozzle ", path: "/supervisor/nozzles", icon: Fuel },
-    { name: "Penjualan", path: "/supervisor/fuel-sales", icon: DollarSign },
-    {
-      name: "Catatan Kerusakan Alat",
-      path: "/supervisor/equipment-damage-report",
-      icon: Wrench,
-    },
-    {
-      name: "Rekap Absensi",
-      path: "/supervisor/employee/attendances",
+      name: "Absensi",
+      path: "/operator/employee/attendances",
       icon: CalendarCheck,
     },
   ];

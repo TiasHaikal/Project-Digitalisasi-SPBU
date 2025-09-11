@@ -1,6 +1,6 @@
 // app/dashboard/layout.tsx
 "use client";
-import Sidebar from "@/components/sidebarOperator";
+import SidebarSupervisor from "@/components/sidebarOperator";
 
 export default function DashboardLayout({
   children,
@@ -9,7 +9,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="flex">
-      <Sidebar />
+      <SidebarSupervisor />
       <main className="flex-1 p-6">{children}</main>
     </div>
   );

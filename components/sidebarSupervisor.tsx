@@ -93,6 +93,7 @@ export default function Sidebar() {
     },
     { name: "Unit Pump", path: "/supervisor/pump-units", icon: FileText },
     { name: "Nozzle ", path: "/supervisor/nozzles", icon: Fuel },
+    { name: "Penjualan", path: "/supervisor/fuel-sales", icon: DollarSign },
   ];
 
   return (

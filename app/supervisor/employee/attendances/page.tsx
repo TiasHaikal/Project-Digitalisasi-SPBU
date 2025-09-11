@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import API, { getPhotoUrl } from "@/lib/api"; // ⬅️ import getPhotoUrl
 import Swal from "sweetalert2";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Attendance {
   id: number;
@@ -22,6 +28,7 @@ interface Attendance {
 export default function RekapPage() {
   const [records, setRecords] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
   const fetchAttendances = async () => {
     setLoading(true);
@@ -91,14 +98,25 @@ export default function RekapPage() {
                     <td className="px-4 py-3 text-center">
                       {item.photo ? (
                         <img
-                          src={getPhotoUrl(item.photo)} // ⬅️ sudah pakai helper
+                          src={getPhotoUrl(item.photo)}
                           alt="Foto"
-                          className="w-14 h-14 object-cover rounded-full border mx-auto shadow-sm"
+                          className="w-14 h-14 object-cover rounded-full border mx-auto shadow-sm cursor-pointer"
+                          onClick={() =>
+                            Swal.fire({
+                              title: "Detail Foto",
+                              imageUrl: getPhotoUrl(item.photo),
+                              imageAlt: "Foto Absensi",
+                              showCloseButton: true,
+                              showConfirmButton: false,
+                              width: "auto",
+                            })
+                          }
                         />
                       ) : (
-                        <span className="text-gray-400 italic">No Photo</span>
+                        <span className="text-gray-100 italic">No Photo</span>
                       )}
                     </td>
+
                     <td className="px-4 py-3 text-center">
                       {new Date(item.createdAt).toLocaleString("id-ID", {
                         day: "2-digit",

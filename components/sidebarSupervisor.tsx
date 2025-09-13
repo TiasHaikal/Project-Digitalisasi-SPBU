@@ -105,6 +105,7 @@ export default function Sidebar() {
       path: "/supervisor/employee/attendances",
       icon: CalendarCheck,
     },
+  { name: "Rekap Izin", path: "/supervisor/employee/absences", icon: CalendarCheck },
   ];
 
   return (

@@ -81,6 +81,7 @@ export default function Sidebar() {
       path: "/operator/employee/attendances",
       icon: CalendarCheck,
     },
+    { name: "Izin", path: "/operator/employee/absences", icon: CalendarCheck },
   ];
 
   return (

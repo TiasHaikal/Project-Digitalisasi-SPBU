@@ -21,6 +21,7 @@ import {
   Fuel,
   CalendarCheck,
 } from "lucide-react";
+import path from "path";
 
 // Format role: ADMIN_PUSAT -> Admin Pusat
 function formatRole(role: string) {
@@ -85,6 +86,11 @@ export default function Sidebar() {
     {
       name: "Checklist Kantor",
       path: "/ob/checklist/office",
+      icon: ClipboardCheck,
+    },
+    {
+      name: "Checklist Mushola",
+      path: "/ob/checklist/mushola",
       icon: ClipboardCheck,
     },
   ];

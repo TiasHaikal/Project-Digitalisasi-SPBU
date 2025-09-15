@@ -98,6 +98,11 @@ export default function Sidebar() {
       path: "/ob/checklist/garden",
       icon: ClipboardCheck,
     },
+    {
+      name: "Checklist Toilet",
+      path: "/ob/checklist/toilet",
+      icon: ClipboardCheck,
+    },
   ];
 
   return (

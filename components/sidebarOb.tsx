@@ -75,13 +75,18 @@ export default function Sidebar() {
   };
 
   const menuItems = [
-    { name: "Dashboard", path: "/operator/dashboard", icon: LayoutDashboard },
+    { name: "Dashboard", path: "/ob/dashboard", icon: LayoutDashboard },
     {
       name: "Absensi",
-      path: "/operator/employee/attendances",
+      path: "/ob/employee/attendances",
       icon: CalendarCheck,
     },
-    { name: "Izin", path: "/operator/employee/absences", icon: CalendarCheck },
+    { name: "Izin", path: "/ob/employee/absences", icon: CalendarCheck },
+    {
+      name: "Checklist Kantor",
+      path: "/ob/checklist/office",
+      icon: ClipboardCheck,
+    },
   ];
 
   return (

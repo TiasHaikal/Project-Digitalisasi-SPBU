@@ -17,7 +17,7 @@ export default function LoginPage() {
   const handleLogin = async () => {
     try {
       const res = await API.post("/auth/login", { email, password });
-      console.log("Login response:", res.data);
+      // console.log("Login response:", res.data);
 
       const token =
         res.data.token || res.data.access_token || res.data.data?.token;

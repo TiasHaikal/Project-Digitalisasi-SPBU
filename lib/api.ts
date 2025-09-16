@@ -2,7 +2,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 const API = axios.create({
-  baseURL: "https://f58f92c1fff3.ngrok-free.app/api/v1",
+  baseURL: "http://103.103.20.182/api/v1",
 });
 
 // Interceptor untuk nambahin JWT ke header

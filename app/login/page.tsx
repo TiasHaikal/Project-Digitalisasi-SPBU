@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Cookies from "js-cookie"; // ⬅️ import js-cookie
+import Swal from "sweetalert2";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -75,9 +76,15 @@ export default function LoginPage() {
         alert("Role tidak dikenali, silakan hubungi admin!");
         router.push("/login");
       }
+      Swal.fire("Berhasil", "Login berhasil, Selamat Bekerja!", "success");
     } catch (err: any) {
-      console.error(err.response?.data || err.message);
-      alert(err.response?.data?.message || "Login gagal!");
+      // console.error(err.response?.data || err.message);
+      //MENAMBAHKAN SWAL FIRE
+      Swal.fire(
+        "Error",
+        err.response?.data?.message || "Login gagal!",
+        "error"
+      );
     }
   };
 

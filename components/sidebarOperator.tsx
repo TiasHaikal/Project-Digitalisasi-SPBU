@@ -82,6 +82,7 @@ export default function Sidebar() {
       icon: CalendarCheck,
     },
     { name: "Izin", path: "/operator/employee/absences", icon: CalendarCheck },
+    { name: "Checklist Driveaway", path: "/operator/checklist-driveaway", icon: Truck },
   ];
 
   return (

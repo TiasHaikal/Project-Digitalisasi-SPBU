@@ -83,6 +83,7 @@ export default function Sidebar() {
     },
     { name: "Izin", path: "/operator/employee/absences", icon: CalendarCheck },
     { name: "Checklist Driveaway", path: "/operator/checklist-driveaway", icon: Truck },
+    { name: "Checklist Shift", path: "/operator/checklist-shift", icon: ClipboardCheck },
   ];
 
   return (

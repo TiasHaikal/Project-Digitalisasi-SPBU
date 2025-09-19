@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import API, { getPhotoUrl } from "@/lib/api";
 import Swal from "sweetalert2";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { Button } from "@/components/ui/button";
 
 interface Absence {
   id: number;
@@ -41,13 +44,148 @@ export default function AbsencePage() {
   useEffect(() => {
     fetchAbsences();
   }, []);
+  // Fungsi untuk mengubah gambar menjadi Base64 ---
+  const toBase64 = async (url: string): Promise<string | null> => {
+    try {
+      const response = await fetch(url, { mode: "cors" });
+      if (!response.ok) return null;
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error(`Gagal mengubah gambar ke Base64 dari URL: ${url}`, error);
+      return null;
+    }
+  };
+  // Fungsi Ekspor PDF ---
+  const handleExportPDF = async () => {
+    if (records.length === 0) {
+      Swal.fire("Info", "Tidak ada data untuk diekspor!", "info");
+      return;
+    }
+
+    Swal.fire({
+      title: "Mempersiapkan PDF...",
+      text: "Mohon tunggu, sedang memproses lampiran.",
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+    });
+
+    const doc = new jsPDF({ orientation: "landscape" });
+    const spbu = records[0]?.spbu?.code_spbu || "N/A";
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Rekap Izin / Absensi", doc.internal.pageSize.getWidth() / 2, 15, {
+      align: "center",
+    });
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`SPBU: ${spbu}`, 14, 25);
+    doc.text(
+      `Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}`,
+      doc.internal.pageSize.getWidth() - 14,
+      25,
+      { align: "right" }
+    );
+
+    const head = [
+      ["Nama", "Role", "Jenis", "Tanggal Izin", "Alasan", "Lampiran"],
+    ];
+
+    const bodyData = await Promise.all(
+      records.map(async (item) => ({
+        name: item.user?.name || "-",
+        role: item.user?.role || "-",
+        jenis: item.jenisPengajuan,
+        tanggal: `${new Date(item.tanggalAwal).toLocaleDateString(
+          "id-ID"
+        )} s/d ${new Date(item.tanggalAkhir).toLocaleDateString("id-ID")}`,
+        alasan: item.alasan,
+        lampiran: item.lampiran
+          ? await toBase64(getPhotoUrl(item.lampiran))
+          : null,
+      }))
+    );
+
+    const bodyForDisplay = bodyData.map((item) => [
+      item.name,
+      item.role,
+      item.jenis,
+      item.tanggal,
+      item.alasan,
+      "",
+    ]);
+
+    autoTable(doc, {
+      head: head,
+      body: bodyForDisplay,
+      startY: 30,
+      theme: "grid",
+      styles: { fontSize: 8, valign: "middle" },
+      headStyles: {
+        fontStyle: "bold",
+        fillColor: [41, 128, 185],
+        textColor: 255,
+      },
+      columnStyles: {
+        0: { cellWidth: 35 }, // Nama
+        1: { cellWidth: 25 }, // Role
+        2: { cellWidth: 20 }, // Jenis
+        3: { cellWidth: 35 }, // Tanggal
+        4: { cellWidth: "auto" }, // Alasan
+        5: { cellWidth: 30, minCellHeight: 25 }, // Lampiran
+      },
+      didDrawCell: (data) => {
+        if (data.section === "body" && data.column.index === 5) {
+          const itemWithLampiran = bodyData[data.row.index];
+          if (itemWithLampiran && itemWithLampiran.lampiran) {
+            try {
+              const imgProps = doc.getImageProperties(
+                itemWithLampiran.lampiran
+              );
+              const imgWidth = 20;
+              const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+              const x = data.cell.x + (data.cell.width - imgWidth) / 2;
+              const y = data.cell.y + (data.cell.height - imgHeight) / 2;
+              doc.addImage(
+                itemWithLampiran.lampiran,
+                x,
+                y,
+                imgWidth,
+                imgHeight
+              );
+            } catch (e) {
+              console.error(
+                `Gagal menambahkan lampiran untuk baris ${data.row.index}:`,
+                e
+              );
+            }
+          }
+        }
+      },
+    });
+
+    Swal.close();
+    doc.save(`Rekap_Izin_Absensi_${spbu}.pdf`);
+  };
 
   return (
     <div className="p-6 min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto bg-white shadow-lg rounded-2xl p-6">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800 text-center">
-          📌 Rekap Izin / Absensi
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold mb-6 text-gray-800 text-center">
+            📌 Rekap Izin / Absensi
+          </h1>
+          <Button variant="outline" onClick={handleExportPDF}>
+            Export ke PDF
+          </Button>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
             <thead>

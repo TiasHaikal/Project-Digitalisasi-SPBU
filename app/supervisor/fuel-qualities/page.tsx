@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface Tank {
   id: number;
@@ -178,6 +180,76 @@ export default function FuelQualitiesPage() {
         "error"
       );
     }
+  };
+
+  // --- TAMBAHAN BARU: Fungsi Ekspor PDF ---
+  const handleExportPDF = () => {
+    if (fuelQualities.length === 0) {
+      Swal.fire("Info", "Tidak ada data untuk diekspor!", "info");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape" });
+    const spbu = fuelQualities[0]?.tank.spbu.code_spbu || "N/A";
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      "Laporan Kualitas BBM (Fuel Quality)",
+      doc.internal.pageSize.getWidth() / 2,
+      15,
+      { align: "center" }
+    );
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`SPBU: ${spbu}`, 14, 25);
+    doc.text(
+      `Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}`,
+      doc.internal.pageSize.getWidth() - 14,
+      25,
+      { align: "right" }
+    );
+
+    const head = [
+      [
+        "Tank",
+        "Tanggal",
+        "No Mobil",
+        "Density Obs.",
+        "Suhu Obs.",
+        "Density Std.",
+        "Tinggi Air",
+        "Density PNBP",
+        "Selisih Density",
+      ],
+    ];
+    const body = fuelQualities.map((f) => [
+      `${f.tank.code_tank} (${f.tank.fuel_type.replace(/_/g, " ")})`,
+      new Date(f.tanggal).toLocaleString("id-ID"),
+      f.noMobilTangki,
+      f.densityObserved,
+      f.suhuObserved,
+      f.densityStd,
+      f.tinggiAirTangkiPendam,
+      f.densityStdPnbp,
+      f.selisihDensity,
+    ]);
+
+    autoTable(doc, {
+      head: head,
+      body: body,
+      startY: 30,
+      theme: "grid",
+      styles: { fontSize: 8 },
+      headStyles: {
+        fontStyle: "bold",
+        fillColor: [41, 128, 185],
+        textColor: 255,
+      },
+    });
+
+    doc.save(`Laporan_Fuel_Quality_${spbu}.pdf`);
   };
 
   const renderFormFields = () => (
@@ -354,7 +426,11 @@ export default function FuelQualitiesPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Fuel Qualities</h1>
+        <Button variant="outline" onClick={handleExportPDF}>
+          Export PDF
+        </Button>
         <Button onClick={openAdd}>+ Tambah Data</Button>
+        
       </div>
 
       <Card>

@@ -14,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface EquipmentDamage {
   id: number;
@@ -217,11 +219,89 @@ export default function EquipmentDamageReportPage() {
       );
     }
   };
+  // Fungsi Ekspor PDF ---
+  const handleExportPDF = () => {
+    if (reports.length === 0) {
+      Swal.fire("Info", "Tidak ada data untuk diekspor!", "info");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape" });
+    const spbu = reports[0]?.spbu?.code_spbu || "N/A";
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      "Laporan Kerusakan Peralatan",
+      doc.internal.pageSize.getWidth() / 2,
+      15,
+      { align: "center" }
+    );
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`SPBU: ${spbu}`, 14, 25);
+    doc.text(
+      `Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}`,
+      doc.internal.pageSize.getWidth() - 14,
+      25,
+      { align: "right" }
+    );
+
+    const head = [
+      [
+        "Unit",
+        "Deskripsi",
+        "Tindakan",
+        "PJ",
+        "Tgl Rusak",
+        "Tgl Lapor",
+        "Tgl Perbaikan",
+        "Tgl Selesai",
+      ],
+    ];
+    const body = reports.map((r) => {
+      const formatDate = (dateStr: string | null) =>
+        dateStr ? new Date(dateStr).toLocaleString("id-ID") : "-";
+      return [
+        r.namaUnit,
+        r.deskripsiKerusakan,
+        r.tindakanYangDilakukan,
+        r.penanggungJawabPerbaikan,
+        formatDate(r.tanggalKerusakan),
+        formatDate(r.tanggalPemberitahuan),
+        formatDate(r.tanggalPerbaikan),
+        formatDate(r.tanggalPerbaikanSelesai),
+      ];
+    });
+
+    autoTable(doc, {
+      head: head,
+      body: body,
+      startY: 30,
+      theme: "grid",
+      styles: { fontSize: 8 },
+      headStyles: {
+        fontStyle: "bold",
+        fillColor: [41, 128, 185],
+        textColor: 255,
+      },
+      columnStyles: {
+        1: { cellWidth: "auto" }, // Deskripsi
+        2: { cellWidth: "auto" }, // Tindakan
+      },
+    });
+
+    doc.save(`Laporan_Kerusakan_Peralatan_${spbu}.pdf`);
+  };
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Equipment Damage Report</h1>
+        <Button variant="outline" onClick={handleExportPDF}>
+          Export PDF
+        </Button>
         <Button onClick={() => setOpenAdd(true)}>+ Tambah Laporan</Button>
       </div>
 

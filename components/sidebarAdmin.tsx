@@ -87,21 +87,6 @@ export default function Sidebar() {
 
   const menuItems = [
     { name: "Dashboard", path: "/admin/dashboard", icon: LayoutDashboard },
-    { name: "Stok BBM & Tanki", path: "/admin/stok", icon: Package },
-    { name: "Pengelolaan DO & Pembelanjaan", path: "/admin/do", icon: Truck },
-    { name: "Laporan", path: "/admin/laporan", icon: FileText },
-    { name: "Keuangan", path: "/admin/keuangan", icon: DollarSign },
-    {
-      name: "Laporan Checklist",
-      path: "/admin/checklist",
-      icon: ClipboardCheck,
-    },
-    { name: "Pemeliharaan", path: "/admin/pemeliharaan", icon: Wrench },
-    {
-      name: "Manajemen Operasional",
-      path: "/admin/operasional",
-      icon: Settings,
-    },
   ];
 
   return (

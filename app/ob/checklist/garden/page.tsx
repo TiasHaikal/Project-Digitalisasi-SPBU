@@ -21,8 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-// 1. Interface disesuaikan untuk Taman
 interface ChecklistGarden {
   id: number;
   tanggal: string;
@@ -33,7 +34,6 @@ interface ChecklistGarden {
   user?: { name: string };
 }
 
-// 2. Nama komponen diubah
 export default function ChecklistGardenPage() {
   const [checklists, setChecklists] = useState<ChecklistGarden[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +42,12 @@ export default function ChecklistGardenPage() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [editing, setEditing] = useState<ChecklistGarden | null>(null);
   const [form, setForm] = useState<any>({});
+  const [exportMonth, setExportMonth] = useState<string>(
+    (new Date().getMonth() + 1).toString()
+  );
+  const [exportYear, setExportYear] = useState<string>(
+    new Date().getFullYear().toString()
+  );
 
   const setField = (key: string, value: any) =>
     setForm((prev: any) => ({ ...prev, [key]: value }));
@@ -84,11 +90,10 @@ export default function ChecklistGardenPage() {
       const formData = new URLSearchParams();
       formData.append("tanggal", new Date(form.tanggal).toISOString());
       formData.append("shift", form.shift);
-      // 4. Field disesuaikan menjadi aktifitasGarden
+
       formData.append("aktifitasGarden", form.aktifitasGarden);
       formData.append("checklistStatus", form.checklistStatus);
 
-      // Endpoint API diubah
       await API.post("/ob/checklist-garden", formData);
       Swal.fire("Berhasil", "Checklist berhasil ditambahkan!", "success");
       setOpenAddModal(false);
@@ -108,11 +113,10 @@ export default function ChecklistGardenPage() {
       const formData = new URLSearchParams();
       formData.append("tanggal", new Date(form.tanggal).toISOString());
       formData.append("shift", form.shift);
-      // Field disesuaikan menjadi aktifitasGarden
+
       formData.append("aktifitasGarden", form.aktifitasGarden);
       formData.append("checklistStatus", form.checklistStatus);
 
-      // Endpoint API diubah
       await API.put(`/ob/checklist-garden/${editing.id}`, formData);
 
       Swal.fire("Berhasil", "Checklist berhasil diupdate!", "success");
@@ -139,7 +143,6 @@ export default function ChecklistGardenPage() {
     });
     if (!confirm.isConfirmed) return;
     try {
-      // Endpoint API diubah
       await API.delete(`/ob/checklist-garden/${id}`);
       Swal.fire("Berhasil", "Data berhasil dihapus!", "success");
       fetchChecklists();
@@ -151,8 +154,144 @@ export default function ChecklistGardenPage() {
       );
     }
   };
+  const handleExportPDF = () => {
+    if (!exportMonth || !exportYear) {
+      Swal.fire(
+        "Gagal",
+        "Silakan pilih bulan dan tahun untuk ekspor.",
+        "error"
+      );
+      return;
+    }
+    const month = parseInt(exportMonth, 10) - 1;
+    const year = parseInt(exportYear, 10);
 
-  // 5. Daftar aktivitas di dropdown diubah sesuai gambar
+    const filteredChecklists = checklists.filter((c) => {
+      const date = new Date(c.tanggal);
+      return date.getMonth() === month && date.getFullYear() === year;
+    });
+
+    if (filteredChecklists.length === 0) {
+      Swal.fire(
+        "Info",
+        "Tidak ada data checklist pada bulan dan tahun yang dipilih.",
+        "info"
+      );
+      return;
+    }
+
+    const spbu = filteredChecklists[0]?.spbu?.code_spbu || "N/A";
+    const monthName = new Date(year, month).toLocaleString("id-ID", {
+      month: "long",
+    });
+    const uniqueShifts = [
+      ...new Set(filteredChecklists.map((c) => c.shift)),
+    ].join(", ");
+
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      "CHECKLIST KEGIATAN HOUSEKEEPING TAMAN",
+      doc.internal.pageSize.getWidth() / 2,
+      15,
+      { align: "center" }
+    );
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`SPBU: ${spbu}`, 14, 25);
+    doc.text(`Bulan: ${monthName.toUpperCase()} ${year}`, 14, 30);
+    doc.text(`Shift: ${uniqueShifts}`, 14, 35);
+
+    const statusMap: { [key: string]: string } = {
+      TERLAKSANA: "T",
+      BERSIH: "B",
+      TIDAK_BERSIH: "TB",
+      ADA_KERUSAKAN: "AK",
+      BELUM_DILAKUKAN: "BD",
+    };
+    const shiftMap: { [key: string]: string } = {
+      PAGI: "P",
+      SIANG: "S",
+      MALAM: "M",
+    };
+
+    const activities = [
+      { value: "SAPU_TAMAN", label: "Sapu taman" },
+      { value: "SIRAM_TAMAN", label: "Siram taman" },
+      { value: "CHECK_FUNGSI_LAMPU", label: "Check fungsi lampu" },
+    ];
+
+    const head = [
+      [
+        "Aktifitas",
+        ...Array.from({ length: 31 }, (_, i) => (i + 1).toString()),
+        "Paraf Supervisor",
+      ],
+    ];
+    const body = activities.map((activity) => {
+      const row: (string | number)[] = Array(33).fill("");
+      row[0] = activity.label;
+      const checksForActivity = filteredChecklists.filter(
+        (c) => c.aktifitasGarden === activity.value
+      );
+
+      checksForActivity.forEach((c) => {
+        const day = new Date(c.tanggal).getDate();
+        const currentCell = row[day] as string;
+
+        const statusAbbr = statusMap[c.checklistStatus] || "";
+        const shiftAbbr = shiftMap[c.shift] || "";
+        const newEntry = `${statusAbbr} (${shiftAbbr})`;
+
+        row[day] = currentCell ? `${currentCell}\n${newEntry}` : newEntry;
+      });
+      return row;
+    });
+
+    autoTable(doc, {
+      head: head,
+      body: body,
+      startY: 40,
+      theme: "grid",
+      styles: { fontSize: 8, cellPadding: 1.5 },
+      headStyles: {
+        fontSize: 8,
+        fillColor: [220, 220, 220],
+        textColor: 0,
+        fontStyle: "bold",
+        halign: "center",
+      },
+
+      columnStyles: {
+        0: { cellWidth: 45, fontStyle: "bold" }, // Aktifitas
+        ...Object.fromEntries(
+          Array.from({ length: 31 }, (_, i) => [
+            i + 1,
+            { cellWidth: 6.5, halign: "center" },
+          ])
+        ), // Tanggal 1-31
+        32: { cellWidth: 20 }, // Paraf Supervisor
+      },
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("Keterangan (Legend):", 14, finalY + 10);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      "Status: T (Terlaksana), B (Bersih), TB (Tidak Bersih), AK (Ada Kerusakan), BD (Belum Dilakukan)",
+      14,
+      finalY + 14
+    );
+    doc.text("Shift: P (Pagi), S (Siang), M (Malam)", 14, finalY + 18);
+
+    doc.save(`Checklist_Taman_${spbu}_${monthName}_${year}.pdf`);
+  };
+
   const renderFormFields = () => (
     <>
       <div>
@@ -219,11 +358,42 @@ export default function ChecklistGardenPage() {
   );
 
   return (
-    // 6. Semua teks "..." diubah menjadi "Taman"
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Checklist Taman</h1>
-        <Button onClick={openAdd}>+ Tambah Data</Button>
+        <div className="flex items-center gap-2">
+          <Select value={exportMonth} onValueChange={setExportMonth}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Bulan" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 12 }, (_, i) => (
+                <SelectItem key={i} value={(i + 1).toString()}>
+                  {new Date(0, i).toLocaleString("id-ID", { month: "long" })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={exportYear} onValueChange={setExportYear}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Tahun" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 5 }, (_, i) => (
+                <SelectItem
+                  key={i}
+                  value={(new Date().getFullYear() - i).toString()}
+                >
+                  {new Date().getFullYear() - i}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={handleExportPDF}>
+            Export PDF
+          </Button>
+          <Button onClick={openAdd}>+ Tambah Data</Button>
+        </div>
       </div>
 
       <Card>

@@ -2,7 +2,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 const API = axios.create({
-  baseURL: "http://103.103.20.182/api/v1",
+  baseURL: "https://spbu.randocodes.my.id/api/v1",
 });
 
 // Interceptor untuk nambahin JWT ke header

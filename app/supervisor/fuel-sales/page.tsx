@@ -14,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface FuelSale {
   id: number;
@@ -261,7 +263,7 @@ export default function FuelSalesPage() {
       />
     </div>
   );
-  
+
   // helper format rupiah
   const formatRupiah = (value: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -271,10 +273,83 @@ export default function FuelSalesPage() {
     }).format(value);
   };
 
+  // Fungsi Eksport PDF ---
+  const handleExportPDF = () => {
+    if (fuelSales.length === 0) {
+      Swal.fire("Info", "Tidak ada data untuk diekspor!", "info");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      "Laporan Penjualan BBM (Fuel Sales)",
+      doc.internal.pageSize.getWidth() / 2,
+      15,
+      { align: "center" }
+    );
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}`,
+      14,
+      25
+    );
+
+    const head = [
+      [
+        "Nozzle",
+        "Tanggal",
+        "Shift",
+        "Stand Awal",
+        "Stand Akhir",
+        "Liter",
+        "Harga/Liter",
+        "Total Harga",
+      ],
+    ];
+    const body = fuelSales.map((fs) => {
+      const nozzle = nozzles.find((n) => n.id === fs.nozzleId);
+      const nozzleName = nozzle
+        ? `${nozzle.kodeNozzle} (${nozzle.tank?.fuel_type || "Unknown"})`
+        : fs.nozzleId;
+      return [
+        nozzleName,
+        new Date(fs.tanggal).toLocaleString("id-ID"),
+        fs.shift,
+        fs.standAwal.toLocaleString("id-ID"),
+        fs.standAkhir.toLocaleString("id-ID"),
+        fs.jumlahLiter.toLocaleString("id-ID"),
+        formatRupiah(fs.hargaPerLiter),
+        formatRupiah(fs.totalHarga),
+      ];
+    });
+
+    autoTable(doc, {
+      head: head,
+      body: body,
+      startY: 30,
+      theme: "grid",
+      headStyles: {
+        fontStyle: "bold",
+        fillColor: [41, 128, 185],
+        textColor: 255,
+      },
+    });
+
+    doc.save(`Laporan_Fuel_Sales.pdf`);
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Fuel Sales</h1>
+        <Button variant="outline" onClick={handleExportPDF}>
+          Export PDF
+        </Button>
         <Button onClick={openAdd}>+ Tambah Data</Button>
       </div>
 

@@ -22,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 // 1. Interface disesuaikan dengan field-field baru
 interface ChecklistShift {
@@ -50,6 +52,12 @@ export default function ChecklistShiftPage() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [editing, setEditing] = useState<ChecklistShift | null>(null);
   const [form, setForm] = useState<any>({});
+  const [exportMonth, setExportMonth] = useState<string>(
+    (new Date().getMonth() + 1).toString()
+  );
+  const [exportYear, setExportYear] = useState<string>(
+    new Date().getFullYear().toString()
+  );
 
   const setField = (key: string, value: any) =>
     setForm((prev: any) => ({ ...prev, [key]: value }));
@@ -250,11 +258,184 @@ export default function ChecklistShiftPage() {
     </>
   );
 
+  const handleExportPDF = () => {
+    if (!exportMonth || !exportYear) {
+      Swal.fire(
+        "Gagal",
+        "Silakan pilih bulan dan tahun untuk ekspor.",
+        "error"
+      );
+      return;
+    }
+    const month = parseInt(exportMonth, 10) - 1;
+    const year = parseInt(exportYear, 10);
+
+    const filteredChecklists = checklists.filter((c) => {
+      const date = new Date(c.tanggal);
+      return date.getMonth() === month && date.getFullYear() === year;
+    });
+
+    if (filteredChecklists.length === 0) {
+      Swal.fire(
+        "Info",
+        "Tidak ada data pada bulan dan tahun yang dipilih.",
+        "info"
+      );
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "landscape" });
+    const spbu = filteredChecklists[0]?.spbu?.code_spbu || "N/A";
+    const monthName = new Date(year, month).toLocaleString("id-ID", {
+      month: "long",
+    });
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      "CHECKLIST KEBERSIHAN DAN PERAWATAN DI AWAL SHIFT",
+      doc.internal.pageSize.getWidth() / 2,
+      15,
+      { align: "center" }
+    );
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+
+    // --- PERBAIKAN: Menambahkan kembali "Bulan" dan "Tahun" ---
+    doc.text(`No. SPBU: ${spbu}`, 14, 25);
+    doc.text(`Nama Foreman:`, 14, 30);
+    doc.text(`Shift/Pagi / Siang / Malam`, 14, 35);
+    doc.text(`Bulan: ${monthName.toUpperCase()} ${year}`, 14, 40); // Ditambahkan di sini
+
+    const formatStatus = (status: string) => (status || "").replace(/_/g, " ");
+
+    const head = [
+      [
+        {
+          content: "No.",
+          rowSpan: 2,
+          styles: { halign: "center" as const, valign: "middle" as const },
+        },
+        {
+          content: "Nama Operator, Tanggal & Shift",
+          rowSpan: 2,
+          styles: { halign: "center" as const, valign: "middle" as const },
+        },
+        {
+          content: "Kebersihan & perawatan",
+          colSpan: 4,
+          styles: { halign: "center" as const },
+        },
+        {
+          content: "Kebersihan Area lain",
+          colSpan: 3,
+          styles: { halign: "center" as const },
+        },
+        {
+          content: "Keterangan",
+          rowSpan: 2,
+          styles: { halign: "center" as const, valign: "middle" as const },
+        },
+      ],
+      [
+        { content: "Nozzle", styles: { halign: "center" as const } },
+        { content: "Badan dispenser", styles: { halign: "center" as const } },
+        { content: "Display", styles: { halign: "center" as const } },
+        { content: "Selang", styles: { halign: "center" as const } },
+        {
+          content: "Lantai pulau & Driveway",
+          colSpan: 2,
+          styles: { halign: "center" as const },
+        },
+        {
+          content: "Tiang kanopi / Lampu",
+          styles: { halign: "center" as const },
+        },
+      ],
+    ];
+
+    const body = filteredChecklists.map((c, index) => [
+      index + 1,
+      `${c.user?.name || ""}\n(${new Date(c.tanggal).toLocaleString(
+        "id-ID"
+      )})\n(${c.shift})`,
+      formatStatus(c.perawatanNozzle),
+      formatStatus(c.perawatanBadanDispenser),
+      formatStatus(c.perawatanDisplay),
+      formatStatus(c.perawatanSelangNozzle),
+      formatStatus(c.perawatanLantaiPulau),
+      formatStatus(c.perawatanDriveway),
+      formatStatus(c.perawatanTiangKanopiLampu),
+      c.keterangan,
+    ]);
+
+    autoTable(doc, {
+      head: head,
+      body: body,
+      startY: 45, // Sesuaikan startY karena ada baris tambahan
+      theme: "grid",
+      styles: { fontSize: 7, halign: "center", valign: "middle" },
+      headStyles: {
+        fontStyle: "bold",
+        fillColor: [220, 220, 220],
+        textColor: 0,
+        fontSize: 8,
+      },
+      columnStyles: {
+        0: { cellWidth: 8 },
+        1: { cellWidth: 35, halign: "left" },
+        9: { cellWidth: "auto", halign: "left" },
+      },
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("Keterangan Status:", 14, finalY + 10);
+    doc.setFont("helvetica", "normal");
+    doc.text("TERLAKSANA, BELUM DILAKUKAN, ADA KERUSAKAN", 14, finalY + 14);
+
+    doc.save(`Checklist_Awal_Shift_${spbu}.pdf`);
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Checklist Awal Shift</h1>
-        <Button onClick={openAdd}>+ Tambah Data</Button>
+        <div className="flex items-center gap-2">
+          <Select value={exportMonth} onValueChange={setExportMonth}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Bulan" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 12 }, (_, i) => (
+                <SelectItem key={i} value={(i + 1).toString()}>
+                  {new Date(0, i).toLocaleString("id-ID", { month: "long" })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={exportYear} onValueChange={setExportYear}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Tahun" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 5 }, (_, i) => (
+                <SelectItem
+                  key={i}
+                  value={(new Date().getFullYear() - i).toString()}
+                >
+                  {new Date().getFullYear() - i}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={handleExportPDF}>
+            Export PDF
+          </Button>
+          <Button onClick={openAdd}>+ Tambah Data</Button>
+        </div>
       </div>
 
       <Card>

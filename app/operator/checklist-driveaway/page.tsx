@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface ChecklistDriveway {
   id: number;
@@ -41,6 +43,12 @@ export default function ChecklistDrivewayPage() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [editing, setEditing] = useState<ChecklistDriveway | null>(null);
   const [form, setForm] = useState<any>({});
+  const [exportMonth, setExportMonth] = useState<string>(
+    (new Date().getMonth() + 1).toString()
+  );
+  const [exportYear, setExportYear] = useState<string>(
+    new Date().getFullYear().toString()
+  );
 
   const setField = (key: string, value: any) =>
     setForm((prev: any) => ({ ...prev, [key]: value }));
@@ -90,7 +98,7 @@ export default function ChecklistDrivewayPage() {
       Swal.fire("Berhasil", "Checklist berhasil ditambahkan!", "success");
       setOpenAddModal(false);
       fetchChecklists();
-    } catch (err: any)      {
+    } catch (err: any) {
       Swal.fire(
         "Error",
         err.response?.data?.message || "Gagal tambah data!",
@@ -248,11 +256,227 @@ export default function ChecklistDrivewayPage() {
     </>
   );
 
+  // Fungsi Ekspor PDF untuk Driveway --
+  const handleExportPDF = () => {
+    if (!exportMonth || !exportYear) {
+      Swal.fire(
+        "Gagal",
+        "Silakan pilih bulan dan tahun untuk ekspor.",
+        "error"
+      );
+      return;
+    }
+    const month = parseInt(exportMonth, 10) - 1;
+    const year = parseInt(exportYear, 10);
+
+    const filteredChecklists = checklists.filter((c) => {
+      const date = new Date(c.tanggal);
+      return date.getMonth() === month && date.getFullYear() === year;
+    });
+
+    if (filteredChecklists.length === 0) {
+      Swal.fire(
+        "Info",
+        "Tidak ada data checklist pada bulan dan tahun yang dipilih.",
+        "info"
+      );
+      return;
+    }
+
+    const spbu = filteredChecklists[0]?.spbu?.code_spbu || "N/A";
+    const monthName = new Date(year, month).toLocaleString("id-ID", {
+      month: "long",
+    });
+    const uniqueShifts = [
+      ...new Set(filteredChecklists.map((c) => c.shift)),
+    ].join(", ");
+
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      "CHECKLIST KEGIATAN HOUSEKEEPING DRIVEWAY",
+      doc.internal.pageSize.getWidth() / 2,
+      15,
+      { align: "center" }
+    );
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`SPBU: ${spbu}`, 14, 25);
+    doc.text(`Bulan: ${monthName.toUpperCase()} ${year}`, 14, 30);
+    doc.text(`Shift: ${uniqueShifts}`, 14, 35);
+
+    const statusMap: { [key: string]: string } = {
+      TERLAKSANA: "T",
+      BERSIH: "B",
+      TIDAK_BERSIH: "TB",
+      ADA_KERUSAKAN: "AK",
+      BELUM_DILAKUKAN: "BD",
+    };
+    const shiftMap: { [key: string]: string } = {
+      PAGI: "P",
+      SIANG: "S",
+      MALAM: "M",
+    };
+
+    // Kelompokkan aktivitas berdasarkan elemen
+    const groupedActivities: {
+      [key: string]: { value: string; label: string }[];
+    } = {
+      DRIVEWAY: [
+        {
+          value: "SAPU_DAERAH_DRIVEWAY_DAN_SEKITARNYA",
+          label: "Sapu daerah driveway & sekitarnya",
+        },
+        {
+          value: "CUCI_DRIVEWAY_DENGAN_SIKAT_DAN_DETERGEN",
+          label: "Cuci driveway dengan sikat & detergen",
+        },
+      ],
+      PULAU: [
+        {
+          value: "CUCI_PULAU_DENGAN_SIKAT_DAN_DETERGEN",
+          label: "Cuci pulau dengan sikat & detergen",
+        },
+      ],
+      KANOPI: [
+        {
+          value: "PEMERIKSAAN_VISUAL_KESULITAN_DAN_KEBERSIHAN",
+          label: "Pemeriksaan visual kesulitan & kebersihan",
+        },
+        { value: "PERIKSA_FUNGSI_LAMPU", label: "Periksa fungsi lampu" },
+      ],
+      SIGNAGE: [{ value: "PERIKSA_LAMPU", label: "Periksa lampu" }],
+      OIL: [
+        {
+          value: "PERIKSA_KEDALAMAN_DAN_KEBERSIHAN",
+          label: "Periksa kedalaman & kebersihan",
+        },
+        { value: "KURAS", label: "Kuras" },
+      ],
+    };
+
+    const head = [
+      [
+        "Elemen",
+        "Aktifitas",
+        ...Array.from({ length: 31 }, (_, i) => (i + 1).toString()),
+        "Paraf Supervisor",
+      ],
+    ];
+    const body: any[] = [];
+
+    Object.keys(groupedActivities).forEach((elemen) => {
+      const activities = groupedActivities[elemen];
+      activities.forEach((activity, index) => {
+        const row: (string | number)[] = Array(34).fill("");
+        // Hanya tulis nama elemen di baris pertama
+        if (index === 0) {
+          row[0] = elemen;
+        }
+        row[1] = activity.label;
+
+        const checksForActivity = filteredChecklists.filter(
+          (c) => c.aktifitasDriveway === activity.value
+        );
+        checksForActivity.forEach((c) => {
+          const day = new Date(c.tanggal).getDate();
+          const currentCell = row[day + 1] as string; // +1 karena ada kolom elemen
+          const statusAbbr = statusMap[c.checklistStatus] || "";
+          const shiftAbbr = shiftMap[c.shift] || "";
+          const newEntry = `${statusAbbr} (${shiftAbbr})`;
+          row[day + 1] = currentCell ? `${currentCell}\n${newEntry}` : newEntry;
+        });
+        body.push(row);
+      });
+    });
+
+    autoTable(doc, {
+      head: head,
+      body: body,
+      startY: 40,
+      theme: "grid",
+      styles: { fontSize: 7, cellPadding: 1 },
+      headStyles: {
+        fontSize: 8,
+        fillColor: [220, 220, 220],
+        textColor: 0,
+        fontStyle: "bold",
+        halign: "center",
+      },
+      columnStyles: {
+        0: {
+          cellWidth: 20,
+          fontStyle: "bold",
+          fontSize: 8,
+          halign: "center",
+          valign: "middle",
+        },
+        1: { cellWidth: 45, fontSize: 8 },
+        ...Object.fromEntries(
+          Array.from({ length: 31 }, (_, i) => [
+            i + 2,
+            { cellWidth: 6.2, halign: "center" },
+          ])
+        ),
+        33: { cellWidth: 20 },
+      },
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("Keterangan (Legend):", 14, finalY + 10);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      "Status: T (Terlaksana), B (Bersih), TB (Tidak Bersih), AK (Ada Kerusakan), BD (Belum Dilakukan)",
+      14,
+      finalY + 14
+    );
+    doc.text("Shift: P (Pagi), S (Siang), M (Malam)", 14, finalY + 18);
+
+    doc.save(`Checklist_Driveway_${spbu}_${monthName}_${year}.pdf`);
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Checklist Driveway</h1>
-        <Button onClick={openAdd}>+ Tambah Data</Button>
+        <div className="flex items-center gap-2">
+          <Select value={exportMonth} onValueChange={setExportMonth}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Bulan" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 12 }, (_, i) => (
+                <SelectItem key={i} value={(i + 1).toString()}>
+                  {new Date(0, i).toLocaleString("id-ID", { month: "long" })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={exportYear} onValueChange={setExportYear}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Tahun" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 5 }, (_, i) => (
+                <SelectItem
+                  key={i}
+                  value={(new Date().getFullYear() - i).toString()}
+                >
+                  {new Date().getFullYear() - i}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={handleExportPDF}>
+            Export PDF
+          </Button>
+          <Button onClick={openAdd}>+ Tambah Data</Button>
+        </div>
       </div>
 
       <Card>

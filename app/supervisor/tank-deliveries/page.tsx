@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface Tank {
   id: number;
@@ -342,11 +344,89 @@ export default function TankDeliveriesPage() {
       );
     }
   };
+  // --- TAMBAHAN BARU: Fungsi Ekspor PDF ---
+  const handleExportPDF = () => {
+    if (deliveries.length === 0) {
+      Swal.fire("Info", "Tidak ada data untuk diekspor!", "info");
+      return;
+    }
 
+    const doc = new jsPDF({ orientation: "landscape" });
+    const spbu = deliveries[0]?.tank.spbu.code_spbu || "N/A";
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      "Laporan Penerimaan BBM",
+      doc.internal.pageSize.getWidth() / 2,
+      15,
+      { align: "center" }
+    );
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`SPBU: ${spbu}`, 14, 25);
+    doc.text(
+      `Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}`,
+      doc.internal.pageSize.getWidth() - 14,
+      25,
+      { align: "right" }
+    );
+
+    const head = [
+      [
+        "Tanggal",
+        "Tank",
+        "Shift",
+        "No Mobil",
+        "Stock Awal",
+        "Vol. PNBP",
+        "Vol. Aktual",
+        "L/K Terima",
+        "Totalisator",
+        "Stock Akhir Buku",
+        "Stock Akhir Aktual",
+        "L/K Ops",
+      ],
+    ];
+    const body = deliveries.map((d) => [
+      new Date(d.deliveryDate).toLocaleString("id-ID"),
+      `${d.tank.code_tank} (${d.tank.fuel_type.replace(/_/g, " ")})`,
+      d.shift,
+      d.noMobilTangki,
+      d.stockAwalShift.toLocaleString("id-ID"),
+      d.volumePnbp?.toLocaleString("id-ID") ?? "-",
+      d.volumePenerimaanAktual?.toLocaleString("id-ID") ?? "-",
+      d.lebihKurangPenerimaan?.toLocaleString("id-ID") ?? "-",
+      d.pengeluaranTotalisatorNozzle?.toLocaleString("id-ID") ?? "-",
+      d.stockAkhirPembukuan?.toLocaleString("id-ID") ?? "-",
+      d.stockAkhirAktual?.toLocaleString("id-ID") ?? "-",
+      d.lebihKurangOperasional?.toLocaleString("id-ID") ?? "-",
+    ]);
+
+    autoTable(doc, {
+      head: head,
+      body: body,
+      startY: 30,
+      theme: "grid",
+      styles: { fontSize: 7 },
+      headStyles: {
+        fontStyle: "bold",
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontSize: 8,
+      },
+    });
+
+    doc.save(`Laporan_Penerimaan_BBM_${spbu}.pdf`);
+  };
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Daftar Tank Deliveries</h1>
+        <Button variant="outline" onClick={handleExportPDF}>
+          Export PDF
+        </Button>
         <Button onClick={() => setOpenAddModal(true)}>+ Tambah Delivery</Button>
       </div>
 

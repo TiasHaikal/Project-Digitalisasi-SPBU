@@ -21,21 +21,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-// 1. Interface disesuaikan untuk Toilet
 interface ChecklistToilet {
   id: number;
   tanggal: string;
   shift: string;
-  aktifitasToilet: string; // Diubah dari aktifitasMushola
+  aktifitasToilet: string;
   checklistStatus: string;
   spbu?: { code_spbu: string };
   user?: { name: string };
 }
 
-// 2. Nama komponen diubah
 export default function ChecklistToiletPage() {
-  // State disesuaikan untuk menampung data ChecklistToilet
   const [checklists, setChecklists] = useState<ChecklistToilet[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,14 +42,18 @@ export default function ChecklistToiletPage() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [editing, setEditing] = useState<ChecklistToilet | null>(null);
   const [form, setForm] = useState<any>({});
-
+  const [exportMonth, setExportMonth] = useState<string>(
+    (new Date().getMonth() + 1).toString()
+  );
+  const [exportYear, setExportYear] = useState<string>(
+    new Date().getFullYear().toString()
+  );
   const setField = (key: string, value: any) =>
     setForm((prev: any) => ({ ...prev, [key]: value }));
 
   const fetchChecklists = async () => {
     setLoading(true);
     try {
-      // 3. Endpoint API diubah ke /ob/checklist-toilet
       const res = await API.get("/ob/checklist-toilet");
       setChecklists(res.data.data || []);
     } catch (err: any) {
@@ -85,16 +88,15 @@ export default function ChecklistToiletPage() {
       const formData = new URLSearchParams();
       formData.append("tanggal", new Date(form.tanggal).toISOString());
       formData.append("shift", form.shift);
-      // 4. Field disesuaikan menjadi aktifitasToilet
+
       formData.append("aktifitasToilet", form.aktifitasToilet);
       formData.append("checklistStatus", form.checklistStatus);
 
-      // Endpoint API diubah
       await API.post("/ob/checklist-toilet", formData);
       Swal.fire("Berhasil", "Checklist berhasil ditambahkan!", "success");
       setOpenAddModal(false);
       fetchChecklists();
-    } catch (err: any)      {
+    } catch (err: any) {
       Swal.fire(
         "Error",
         err.response?.data?.message || "Gagal tambah data!",
@@ -113,7 +115,6 @@ export default function ChecklistToiletPage() {
       formData.append("aktifitasToilet", form.aktifitasToilet);
       formData.append("checklistStatus", form.checklistStatus);
 
-      // Endpoint API diubah
       await API.put(`/ob/checklist-toilet/${editing.id}`, formData);
 
       Swal.fire("Berhasil", "Checklist berhasil diupdate!", "success");
@@ -140,7 +141,6 @@ export default function ChecklistToiletPage() {
     });
     if (!confirm.isConfirmed) return;
     try {
-        // Endpoint API diubah
       await API.delete(`/ob/checklist-toilet/${id}`);
       Swal.fire("Berhasil", "Data berhasil dihapus!", "success");
       fetchChecklists();
@@ -153,7 +153,6 @@ export default function ChecklistToiletPage() {
     }
   };
 
-  // 5. Daftar aktivitas di dropdown diubah sesuai gambar
   const renderFormFields = () => (
     <>
       <div>
@@ -236,12 +235,207 @@ export default function ChecklistToiletPage() {
     </>
   );
 
+  // --- TAMBAHAN BARU: Fungsi Ekspor PDF untuk Toilet ---
+  const handleExportPDF = () => {
+    if (!exportMonth || !exportYear) {
+      Swal.fire(
+        "Gagal",
+        "Silakan pilih bulan dan tahun untuk ekspor.",
+        "error"
+      );
+      return;
+    }
+    const month = parseInt(exportMonth, 10) - 1;
+    const year = parseInt(exportYear, 10);
+
+    const filteredChecklists = checklists.filter((c) => {
+      const date = new Date(c.tanggal);
+      return date.getMonth() === month && date.getFullYear() === year;
+    });
+
+    if (filteredChecklists.length === 0) {
+      Swal.fire(
+        "Info",
+        "Tidak ada data checklist pada bulan dan tahun yang dipilih.",
+        "info"
+      );
+      return;
+    }
+
+    const spbu = filteredChecklists[0]?.spbu?.code_spbu || "N/A";
+    const monthName = new Date(year, month).toLocaleString("id-ID", {
+      month: "long",
+    });
+    const uniqueShifts = [
+      ...new Set(filteredChecklists.map((c) => c.shift)),
+    ].join(", ");
+
+    const doc = new jsPDF({ orientation: "landscape" });
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      "CHECKLIST KEGIATAN HOUSEKEEPING TOILET",
+      doc.internal.pageSize.getWidth() / 2,
+      15,
+      { align: "center" }
+    );
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`SPBU: ${spbu}`, 14, 25);
+    doc.text(`Bulan: ${monthName.toUpperCase()} ${year}`, 14, 30);
+    doc.text(`Shift: ${uniqueShifts}`, 14, 35);
+
+    const statusMap: { [key: string]: string } = {
+      TERLAKSANA: "T",
+      BERSIH: "B",
+      TIDAK_BERSIH: "TB",
+      ADA_KERUSAKAN: "AK",
+      BELUM_DILAKUKAN: "BD",
+    };
+    const shiftMap: { [key: string]: string } = {
+      PAGI: "P",
+      SIANG: "S",
+      MALAM: "M",
+    };
+
+    const activities = [
+      {
+        value: "PERIKSA_KEBERSIHAN_DAN_KERUSAKAN_SECARA_VISUAL",
+        label: "Periksa kebersihan dan kerusakan secara visual",
+      },
+      {
+        value: "PERIKSA_FUNGSI_TOILET_KERAN_PINTU_LAMPU_DAN_JENDELA",
+        label: "Periksa fungsi Toilet, Keran, Pintu, Lampu & Jendela",
+      },
+      {
+        value: "BERSIHKAN_TOILET_WASTAFEL_CERMIN",
+        label: "Bersihkan toilet, wastafel & cermin",
+      },
+      {
+        value: "SEMPROTKAN_PENGISI_RUANGAN",
+        label: "Semprotkan pewangi ruangan",
+      },
+      {
+        value: "SAPU_DAN_LAP_DAERAH_KAMAR_KECIL",
+        label: "Sapu dan lap daerah kamar kecil",
+      },
+      { value: "KURAS_BAK_AIR", label: "Kuras bak air" },
+      {
+        value: "BERSIHKAN_JENDELA_DAN_PINTU",
+        label: "Bersihkan jendela dan pintu",
+      },
+      {
+        value: "GANTI_DAN_CUCI_KESET_PINTU",
+        label: "Ganti dan cuci keset pintu",
+      },
+    ];
+
+    const head = [
+      [
+        "Aktifitas",
+        ...Array.from({ length: 31 }, (_, i) => (i + 1).toString()),
+        "Paraf Supervisor",
+      ],
+    ];
+    const body = activities.map((activity) => {
+      const row: (string | number)[] = Array(33).fill("");
+      row[0] = activity.label;
+      const checksForActivity = filteredChecklists.filter(
+        (c) => c.aktifitasToilet === activity.value
+      );
+
+      checksForActivity.forEach((c) => {
+        const day = new Date(c.tanggal).getDate();
+        const currentCell = row[day] as string;
+
+        const statusAbbr = statusMap[c.checklistStatus] || "";
+        const shiftAbbr = shiftMap[c.shift] || "";
+        const newEntry = `${statusAbbr} (${shiftAbbr})`;
+
+        row[day] = currentCell ? `${currentCell}\n${newEntry}` : newEntry;
+      });
+      return row;
+    });
+
+    autoTable(doc, {
+      head: head,
+      body: body,
+      startY: 40,
+      theme: "grid",
+      styles: { fontSize: 7, cellPadding: 1 },
+      headStyles: {
+        fontSize: 8,
+        fillColor: [220, 220, 220],
+        textColor: 0,
+        fontStyle: "bold",
+        halign: "center",
+      },
+      columnStyles: {
+        0: { cellWidth: 45, fontStyle: "bold", fontSize: 8 },
+        ...Object.fromEntries(
+          Array.from({ length: 31 }, (_, i) => [
+            i + 1,
+            { cellWidth: 6.8, halign: "center" },
+          ])
+        ),
+        32: { cellWidth: 20 },
+      },
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("Keterangan (Legend):", 14, finalY + 10);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      "Status: T (Terlaksana), B (Bersih), TB (Tidak Bersih), AK (Ada Kerusakan), BD (Belum Dilakukan)",
+      14,
+      finalY + 14
+    );
+    doc.text("Shift: P (Pagi), S (Siang), M (Malam)", 14, finalY + 18);
+
+    doc.save(`Checklist_Toilet_${spbu}_${monthName}_${year}.pdf`);
+  };
+
   return (
-    // 6. Semua teks "Mushola" diubah menjadi "Toilet"
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Checklist Toilet</h1>
-        <Button onClick={openAdd}>+ Tambah Data</Button>
+        <div className="flex items-center gap-2">
+          <Select value={exportMonth} onValueChange={setExportMonth}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Bulan" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 12 }, (_, i) => (
+                <SelectItem key={i} value={(i + 1).toString()}>
+                  {new Date(0, i).toLocaleString("id-ID", { month: "long" })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={exportYear} onValueChange={setExportYear}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Tahun" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 5 }, (_, i) => (
+                <SelectItem
+                  key={i}
+                  value={(new Date().getFullYear() - i).toString()}
+                >
+                  {new Date().getFullYear() - i}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={handleExportPDF}>
+            Export PDF
+          </Button>
+          <Button onClick={openAdd}>+ Tambah Data</Button>
+        </div>
       </div>
 
       <Card>
@@ -278,8 +472,12 @@ export default function ChecklistToiletPage() {
                     </TableCell>
                     <TableCell>{c.shift}</TableCell>
                     {/* Data yang ditampilkan diubah ke aktifitasToilet */}
-                    <TableCell>{c.aktifitasToilet.replace(/_/g, " ")}</TableCell>
-                    <TableCell>{c.checklistStatus.replace(/_/g, " ")}</TableCell>
+                    <TableCell>
+                      {c.aktifitasToilet.replace(/_/g, " ")}
+                    </TableCell>
+                    <TableCell>
+                      {c.checklistStatus.replace(/_/g, " ")}
+                    </TableCell>
                     <TableCell className="flex gap-2">
                       <Button
                         size="sm"

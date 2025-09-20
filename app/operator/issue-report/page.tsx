@@ -22,12 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-// --- PERBAIKAN 1: INTERFACE DIBUAT LEBIH FLEKSIBEL ---
 interface IssueReport {
   id: number;
-  tanggalLaporan?: string | null; // Dibuat opsional
-  tanggal?: string | null;        // Ditambahkan kemungkinan field 'tanggal'
+  tanggalLaporan?: string | null;
+  tanggal?: string | null;
   shift: string;
   judulLaporan: string;
   deskripsiLaporan: string;
@@ -72,7 +73,7 @@ export default function IssueReportPage() {
 
   const openEdit = (report: IssueReport) => {
     setEditing(report);
-    // --- PERBAIKAN 2: CEK KEDUA KEMUNGKINAN NAMA FIELD TANGGAL ---
+
     const reportDate = report.tanggalLaporan || report.tanggal;
     setForm({
       ...report,
@@ -150,6 +151,68 @@ export default function IssueReportPage() {
       );
     }
   };
+  // --- TAMBAHAN BARU: Fungsi Ekspor PDF untuk Laporan Masalah ---
+  const handleExportPDF = () => {
+    if (reports.length === 0) {
+      Swal.fire("Info", "Tidak ada data untuk diekspor!", "info");
+      return;
+    }
+
+    const doc = new jsPDF();
+    const spbu = reports[0]?.spbu?.code_spbu || "N/A";
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Laporan Masalah (Issue Report)", 105, 15, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`SPBU: ${spbu}`, 14, 25);
+    doc.text(
+      `Tanggal Cetak: ${new Date().toLocaleDateString("id-ID")}`,
+      doc.internal.pageSize.getWidth() - 14,
+      25,
+      { align: "right" }
+    );
+
+    const head = [
+      ["ID", "Tanggal", "Shift", "User", "Judul Laporan", "Deskripsi"],
+    ];
+    const body = reports.map((report) => {
+      const reportDate = report.tanggalLaporan || report.tanggal;
+      return [
+        report.id,
+        reportDate ? new Date(reportDate).toLocaleString("id-ID") : "-",
+        report.shift,
+        report.user?.name || "-",
+        report.judulLaporan,
+        report.deskripsiLaporan,
+      ];
+    });
+
+    autoTable(doc, {
+      head: head,
+      body: body,
+      startY: 30,
+      theme: "grid",
+      styles: { fontSize: 8 },
+      headStyles: {
+        fontStyle: "bold",
+        fillColor: [220, 220, 220],
+        textColor: 0,
+      },
+      columnStyles: {
+        0: { cellWidth: 10 }, // ID
+        1: { cellWidth: 30 }, // Tanggal
+        2: { cellWidth: 15 }, // Shift
+        3: { cellWidth: 25 }, // User
+        4: { cellWidth: 40 }, // Judul
+        5: { cellWidth: "auto" }, // Deskripsi
+      },
+    });
+
+    doc.save(`Laporan_Masalah_${spbu}.pdf`);
+  };
 
   const renderFormFields = () => (
     <>
@@ -200,7 +263,12 @@ export default function IssueReportPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Laporan Masalah</h1>
-        <Button onClick={openAdd}>+ Buat Laporan</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExportPDF}>
+            Export PDF
+          </Button>
+          <Button onClick={openAdd}>+ Buat Laporan</Button>
+        </div>
       </div>
 
       <Card>
@@ -290,9 +358,7 @@ export default function IssueReportPage() {
       {openEditModal && editing && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50 overflow-y-auto">
           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl">
-            <h2 className="text-xl font-semibold mb-4">
-              Edit Laporan Masalah
-            </h2>
+            <h2 className="text-xl font-semibold mb-4">Edit Laporan Masalah</h2>
             <div className="grid grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto p-2">
               {renderFormFields()}
             </div>

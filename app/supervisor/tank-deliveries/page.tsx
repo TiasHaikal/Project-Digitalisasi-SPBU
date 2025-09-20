@@ -344,6 +344,16 @@ export default function TankDeliveriesPage() {
       );
     }
   };
+  // --- Tambahan state baru untuk modal View ---
+  const [openViewModal, setOpenViewModal] = useState(false);
+  const [viewing, setViewing] = useState<TankDelivery | null>(null);
+
+  // Fungsi untuk buka modal View
+  const openView = (d: TankDelivery) => {
+    setViewing(d);
+    setOpenViewModal(true);
+  };
+
   // --- TAMBAHAN BARU: Fungsi Ekspor PDF ---
   const handleExportPDF = () => {
     if (deliveries.length === 0) {
@@ -472,6 +482,13 @@ export default function TankDeliveriesPage() {
                     <TableCell>{d.volumePenerimaanAktual ?? "-"}</TableCell>
                     <TableCell>{d.stockAkhirAktual ?? "-"}</TableCell>
                     <TableCell className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => openView(d)}
+                      >
+                        View
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -986,6 +1003,212 @@ export default function TankDeliveriesPage() {
                 Batal
               </Button>
               <Button onClick={handleUpdateDelivery}>Simpan</Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal View */}
+      {openViewModal && viewing && (
+        <div className="fixed inset-0 flex items-start sm:items-center justify-center pt-10 sm:pt-0 overflow-y-auto backdrop-blur-sm bg-white/30 z-50">
+          <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-5xl">
+            <h2 className="text-xl font-semibold mb-6">Detail Tank Delivery</h2>
+
+            <div className="space-y-4">
+              {/* Tank */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">Tank</label>
+                <Input
+                  value={
+                    viewing.tank
+                      ? `${viewing.tank.code_tank} (${viewing.tank.fuel_type})${
+                          viewing.tank.spbu?.code_spbu
+                            ? ` - SPBU ${viewing.tank.spbu.code_spbu}`
+                            : ""
+                        }`
+                      : "-"
+                  }
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+
+              {/* Tanggal Delivery */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">
+                  Tanggal Delivery
+                </label>
+                <Input
+                  type="datetime-local"
+                  value={
+                    viewing.deliveryDate
+                      ? new Date(viewing.deliveryDate)
+                          .toISOString()
+                          .slice(0, 16)
+                      : ""
+                  }
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+
+              {/* Shift */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">Shift</label>
+                <Input value={viewing.shift} disabled className="flex-1" />
+              </div>
+
+              {/* Stock Awal Shift */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">
+                  Stock Awal Shift
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={viewing.stockAwalShift}
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+
+              {/* No Mobil Tangki */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">
+                  No Mobil Tangki
+                </label>
+                <Input
+                  value={viewing.noMobilTangki}
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+
+              {/* No PNBP */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">No PNBP</label>
+                <Input value={viewing.noPnbp} disabled className="flex-1" />
+              </div>
+
+              {/* Volume PNBP */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">Volume PNBP</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={viewing.volumePnbp}
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+
+              {/* Jam Penerimaan */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">
+                  Jam Penerimaan
+                </label>
+                <Input
+                  type="time"
+                  value={viewing.jamPenerimaan}
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+
+              {/* Volume Sebelum Penerimaan */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">
+                  Volume Sebelum Penerimaan
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={viewing.volumeSebelumPenerimaan}
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+
+              {/* Volume Penerimaan Aktual */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">
+                  Volume Penerimaan Aktual
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={viewing.volumePenerimaanAktual}
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+              <p className="text-sm text-gray-600">
+                Lebih/Kurang Penerimaan:{" "}
+                <b>
+                  {Number(viewing.volumePenerimaanAktual || 0) -
+                    Number(viewing.volumePnbp || 0)}
+                </b>
+              </p>
+
+              {/* Pengeluaran Totalisator Nozzle */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">
+                  Pengeluaran Totalisator Nozzle
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={viewing.pengeluaranTotalisatorNozzle}
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+
+              {/* Stock Akhir Pembukuan */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">
+                  Stock Akhir Pembukuan
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={viewing.stockAkhirPembukuan}
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+
+              {/* Stock Akhir Aktual */}
+              <div className="flex items-center gap-4">
+                <label className="w-48 text-sm font-medium">
+                  Stock Akhir Aktual
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={viewing.stockAkhirAktual}
+                  disabled
+                  className="flex-1"
+                />
+              </div>
+              <p className="text-sm text-gray-600">
+                Lebih/Kurang Operasional:{" "}
+                <b>
+                  {Number(viewing.stockAkhirAktual || 0) -
+                    Number(viewing.stockAkhirPembukuan || 0)}
+                </b>
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setOpenViewModal(false);
+                  setViewing(null);
+                }}
+              >
+                Tutup
+              </Button>
             </div>
           </div>
         </div>

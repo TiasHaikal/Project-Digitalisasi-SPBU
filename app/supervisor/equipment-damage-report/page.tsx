@@ -299,10 +299,12 @@ export default function EquipmentDamageReportPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Equipment Damage Report</h1>
-        <Button variant="outline" onClick={handleExportPDF}>
-          Export PDF
-        </Button>
-        <Button onClick={() => setOpenAdd(true)}>+ Tambah Laporan</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExportPDF}>
+            Export PDF
+          </Button>
+          <Button onClick={() => setOpenAdd(true)}>+ Tambah Laporan</Button>
+        </div>
       </div>
 
       <Card>

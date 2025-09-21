@@ -434,10 +434,14 @@ export default function TankDeliveriesPage() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Daftar Tank Deliveries</h1>
-        <Button variant="outline" onClick={handleExportPDF}>
-          Export PDF
-        </Button>
-        <Button onClick={() => setOpenAddModal(true)}>+ Tambah Delivery</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExportPDF}>
+            Export PDF
+          </Button>
+          <Button onClick={() => setOpenAddModal(true)}>
+            + Tambah Delivery
+          </Button>
+        </div>
       </div>
 
       <Card>

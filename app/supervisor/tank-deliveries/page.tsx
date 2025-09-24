@@ -289,6 +289,13 @@ export default function TankDeliveriesPage() {
     if (!editing) return;
 
     try {
+      // 1. Ambil data delivery lama
+      const oldDeliveryRes = await API.get(
+        `/supervisor/tank-deliveries/${editing.id}`
+      );
+      const oldDelivery = oldDeliveryRes.data.data || oldDeliveryRes.data;
+
+      // 2. Payload update delivery
       const payload = {
         tankId: Number(e_tankId),
         deliveryDate: e_deliveryDate
@@ -321,11 +328,35 @@ export default function TankDeliveriesPage() {
           Number(e_stockAkhirAktual || 0) - Number(e_stockAkhirPembukuan || 0),
       };
 
+      // 3. Update delivery
       await API.put(`/supervisor/tank-deliveries/${editing.id}`, payload);
-      Swal.fire("Berhasil", "Tank Delivery berhasil diupdate!", "success");
+
+      // 4. Ambil data tank
+      const tankRes = await API.get(`/supervisor/tanks/${e_tankId}`);
+      const tankData = tankRes.data.data || tankRes.data;
+
+      // 5. Hitung selisih volume penerimaan aktual
+      const oldVolume = Number(oldDelivery.volumePenerimaanAktual || 0);
+      const newVolume = Number(e_volumePenerimaanAktual || 0);
+      const diff = newVolume - oldVolume;
+
+      // 6. Update current_volume tank
+      const updatedVolume = Number(tankData.current_volume || 0) + diff;
+
+      await API.put(`/supervisor/tanks/${e_tankId}`, {
+        ...tankData,
+        current_volume: updatedVolume,
+      });
+
+      Swal.fire(
+        "Berhasil",
+        "Tank Delivery berhasil diupdate & Tank ter-update!",
+        "success"
+      );
       setOpenEditModal(false);
       setEditing(null);
       fetchDeliveries();
+      fetchTanks(); // refresh tank biar current_volume ikut update
     } catch (err: any) {
       console.error(
         "update delivery error:",

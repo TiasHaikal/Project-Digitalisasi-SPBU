@@ -248,11 +248,33 @@ export default function TankDeliveriesPage() {
           Number(a_stockAkhirAktual || 0) - Number(a_stockAkhirPembukuan || 0),
       };
 
+      // 1. Simpan delivery baru
       await API.post("/supervisor/tank-deliveries", payload);
-      Swal.fire("Berhasil", "Tank Delivery berhasil ditambahkan!", "success");
+
+      // 2. Ambil tank terkait
+      const tankRes = await API.get(`/supervisor/tanks/${a_tankId}`);
+      const tankData = tankRes.data.data || tankRes.data;
+
+      // 3. Hitung current volume baru
+      const newCurrentVolume =
+        Number(tankData.current_volume || 0) +
+        Number(a_volumePenerimaanAktual || 0);
+
+      // 4. Update tank
+      await API.put(`/supervisor/tanks/${a_tankId}`, {
+        ...tankData,
+        current_volume: newCurrentVolume,
+      });
+
+      Swal.fire(
+        "Berhasil",
+        "Tank Delivery berhasil ditambahkan & Tank diupdate!",
+        "success"
+      );
       resetAddForm();
       setOpenAddModal(false);
       fetchDeliveries();
+      fetchTanks(); // biar current volume ikut refresh
     } catch (err: any) {
       console.error("add delivery error:", err.response?.data || err.message);
       Swal.fire(

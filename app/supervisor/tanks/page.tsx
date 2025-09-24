@@ -283,17 +283,7 @@ export default function TanksPage() {
                 setEditTank({ ...editTank, capacity: Number(e.target.value) })
               }
             />
-            <Input
-              type="number"
-              placeholder="Current Volume"
-              value={editTank.current_volume}
-              onChange={(e) =>
-                setEditTank({
-                  ...editTank,
-                  current_volume: Number(e.target.value),
-                })
-              }
-            />
+            
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditTank(null)}>
                 Batal

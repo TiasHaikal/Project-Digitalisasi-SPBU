@@ -370,33 +370,57 @@ export default function TankDeliveriesPage() {
     }
   };
 
-  const handleDeleteDelivery = async (id: number) => {
-    const confirmDelete = await Swal.fire({
-      title: "Apakah Anda yakin?",
-      text: "Tank Delivery ini akan dihapus permanen.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Ya, hapus!",
-      cancelButtonText: "Batal",
-    });
-    if (!confirmDelete.isConfirmed) return;
+ const handleDeleteDelivery = async (id: number) => {
+  const confirmDelete = await Swal.fire({
+    title: "Apakah Anda yakin?",
+    text: "Tank Delivery ini akan dihapus permanen.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Ya, hapus!",
+    cancelButtonText: "Batal",
+  });
+  if (!confirmDelete.isConfirmed) return;
 
-    try {
-      await API.delete(`/supervisor/tank-deliveries/${id}`);
-      Swal.fire("Berhasil", "Tank Delivery berhasil dihapus!", "success");
-      fetchDeliveries();
-    } catch (err: any) {
-      console.error(
-        "delete delivery error:",
-        err.response?.data || err.message
-      );
-      Swal.fire(
-        "Error",
-        err.response?.data?.message || "Gagal menghapus tank-delivery!",
-        "error"
-      );
-    }
-  };
+  try {
+    // 1. Ambil data delivery lama sebelum hapus
+    const deliveryRes = await API.get(`/supervisor/tank-deliveries/${id}`);
+    const delivery = deliveryRes.data.data || deliveryRes.data;
+
+    const tankId = delivery.tankId;
+    const volumeAktual = Number(delivery.volumePenerimaanAktual || 0);
+
+    // 2. Ambil data tank
+    const tankRes = await API.get(`/supervisor/tanks/${tankId}`);
+    const tankData = tankRes.data.data || tankRes.data;
+
+    // 3. Kurangi current_volume dengan volume penerimaan aktual
+    const updatedVolume = Math.max(
+      0,
+      Number(tankData.current_volume || 0) - volumeAktual
+    );
+
+    // 4. Update tank
+    await API.put(`/supervisor/tanks/${tankId}`, {
+      ...tankData,
+      current_volume: updatedVolume,
+    });
+
+    // 5. Hapus delivery
+    await API.delete(`/supervisor/tank-deliveries/${id}`);
+
+    Swal.fire("Berhasil", "Tank Delivery berhasil dihapus & Tank ter-update!", "success");
+    fetchDeliveries();
+    fetchTanks(); // biar current_volume di UI ikut update
+  } catch (err: any) {
+    console.error("delete delivery error:", err.response?.data || err.message);
+    Swal.fire(
+      "Error",
+      err.response?.data?.message || "Gagal menghapus tank-delivery!",
+      "error"
+    );
+  }
+};
+
   // --- Tambahan state baru untuk modal View ---
   const [openViewModal, setOpenViewModal] = useState(false);
   const [viewing, setViewing] = useState<TankDelivery | null>(null);

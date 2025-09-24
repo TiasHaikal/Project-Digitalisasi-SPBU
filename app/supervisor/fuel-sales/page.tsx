@@ -247,23 +247,53 @@ export default function FuelSalesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    const confirm = await Swal.fire({
-      title: "Yakin?",
-      text: "Data akan dihapus permanen!",
+    const confirmDelete = await Swal.fire({
+      title: "Apakah Anda yakin?",
+      text: "Fuel Sale ini akan dihapus permanen.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Ya, hapus!",
       cancelButtonText: "Batal",
     });
-    if (!confirm.isConfirmed) return;
+    if (!confirmDelete.isConfirmed) return;
+
     try {
+      // 1. Ambil data fuel sale yang mau dihapus
+      const saleRes = await API.get(`/supervisor/fuel-sales/${id}`);
+      const sale = saleRes.data?.data;
+      const liter = Number(sale?.jumlahLiter || 0);
+
+      // 2. Cari tankId lewat nozzle
+      const nozzle = sale?.nozzle;
+      if (!nozzle?.tankId) {
+        throw new Error("Tank untuk nozzle ini tidak ditemukan!");
+      }
+      const tankId = nozzle.tankId;
+
+      // 3. Ambil current_volume tank
+      const tankRes = await API.get(`/supervisor/tanks/${tankId}`);
+      const tank = tankRes.data?.data;
+      const currentVolume = Number(tank?.current_volume || 0);
+
+      // 4. Tambahkan kembali liter ke current_volume
+      const newVolume = currentVolume + liter;
+      await API.put(`/supervisor/tanks/${tankId}`, {
+        current_volume: newVolume,
+      });
+
+      // 5. Hapus fuel sale
       await API.delete(`/supervisor/fuel-sales/${id}`);
-      Swal.fire("Berhasil", "Data berhasil dihapus!", "success");
+
+      Swal.fire("Berhasil", "Fuel Sale berhasil dihapus!", "success");
       fetchFuelSales();
     } catch (err: any) {
+      console.error(
+        "delete fuel sale error:",
+        err.response?.data || err.message
+      );
       Swal.fire(
         "Error",
-        err.response?.data?.message || "Gagal hapus data!",
+        err.response?.data?.message || "Gagal menghapus data!",
         "error"
       );
     }

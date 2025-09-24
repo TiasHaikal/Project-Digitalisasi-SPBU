@@ -190,19 +190,54 @@ export default function FuelSalesPage() {
     }
   };
 
-  const handleUpdate = async () => {
-    if (!editing) return;
+  const handleUpdate = async (id: number) => {
     const payload = buildPayload();
     if (!payload) return;
+
     try {
-      await API.put(`/supervisor/fuel-sales/${editing.id}`, payload, {
+      // 1. Ambil data lama fuel sale
+      const oldSaleRes = await API.get(`/supervisor/fuel-sales/${id}`);
+      const oldSale = oldSaleRes.data?.data;
+      const oldLiter = Number(oldSale?.jumlahLiter || 0);
+
+      // 2. Ambil nozzle → cari tankId
+      const nozzleRes = await API.get(
+        `/supervisor/nozzles/${payload.nozzleId}`
+      );
+      const nozzle = nozzleRes.data?.data;
+      if (!nozzle?.tankId) {
+        throw new Error("Tank untuk nozzle ini tidak ditemukan!");
+      }
+      const tankId = nozzle.tankId;
+
+      // 3. Ambil current_volume tank
+      const tankRes = await API.get(`/supervisor/tanks/${tankId}`);
+      const tank = tankRes.data?.data;
+      const currentVolume = Number(tank?.current_volume || 0);
+
+      // 4. Hitung selisih liter
+      const newLiter = Number(payload.jumlahLiter);
+      const diff = newLiter - oldLiter;
+
+      // 5. Update current_volume tank
+      const newVolume = currentVolume - diff;
+      await API.put(`/supervisor/tanks/${tankId}`, {
+        current_volume: newVolume,
+      });
+
+      // 6. Update fuel sale
+      await API.put(`/supervisor/fuel-sales/${id}`, payload, {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
-      Swal.fire("Berhasil", "Fuel Sale berhasil diupdate!", "success");
+
+      Swal.fire("Berhasil", "Fuel Sale berhasil diperbarui!", "success");
       setOpenEditModal(false);
-      setEditing(null);
       fetchFuelSales();
     } catch (err: any) {
+      console.error(
+        "update fuel sale error:",
+        err.response?.data || err.message
+      );
       Swal.fire(
         "Error",
         err.response?.data?.message || "Gagal update data!",
@@ -486,7 +521,7 @@ export default function FuelSalesPage() {
               >
                 Batal
               </Button>
-              <Button onClick={handleUpdate}>Simpan</Button>
+              <Button onClick={() => handleUpdate(editing.id)}>Simpan</Button>
             </div>
           </div>
         </div>

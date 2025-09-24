@@ -146,14 +146,42 @@ export default function FuelSalesPage() {
   const handleAdd = async () => {
     const payload = buildPayload();
     if (!payload) return;
+
     try {
+      // 1. Ambil nozzle untuk cari tankId
+      const nozzleRes = await API.get(
+        `/supervisor/nozzles/${payload.nozzleId}`
+      );
+      const nozzle = nozzleRes.data?.data;
+      if (!nozzle?.tankId) {
+        throw new Error("Tank untuk nozzle ini tidak ditemukan!");
+      }
+
+      const tankId = nozzle.tankId;
+
+      // 2. Ambil current_volume tank
+      const tankRes = await API.get(`/supervisor/tanks/${tankId}`);
+      const tank = tankRes.data?.data;
+      const currentVolume = Number(tank?.current_volume || 0);
+
+      // 3. Hitung volume baru (kurangi jumlah liter penjualan)
+      const newVolume = currentVolume - Number(payload.jumlahLiter);
+
+      // 4. Update tank current_volume
+      await API.put(`/supervisor/tanks/${tankId}`, {
+        current_volume: newVolume,
+      });
+
+      // 5. Simpan fuel sale
       await API.post("/supervisor/fuel-sales", payload, {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
+
       Swal.fire("Berhasil", "Fuel Sale berhasil ditambahkan!", "success");
       setOpenAddModal(false);
       fetchFuelSales();
     } catch (err: any) {
+      console.error("add fuel sale error:", err.response?.data || err.message);
       Swal.fire(
         "Error",
         err.response?.data?.message || "Gagal tambah data!",

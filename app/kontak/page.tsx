@@ -7,7 +7,7 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 // Or create the file at "@/components/ui/card.tsx" if it doesn't exist.
 import { Button } from "@/components/ui/button";
-import { Mail, Phone, ArrowLeft } from "lucide-react";
+import { Mail, Phone, ArrowLeft, Instagram } from "lucide-react";
 
 export default function ContactSupportPage() {
   const router = useRouter();
@@ -48,10 +48,10 @@ export default function ContactSupportPage() {
                   teknis.
                 </p>
                 <a
-                  href="mailto:support@spbu-manager.com"
+                  href="mailto: contact.kodinesia@gmail.com"
                   className="text-sm text-blue-600 hover:underline"
                 >
-                  support@spbu-manager.com
+                  contact.kodinesia@gmail.com
                 </a>
               </div>
             </div>
@@ -65,7 +65,24 @@ export default function ContactSupportPage() {
                   Hubungi hotline kami untuk bantuan segera selama jam kerja
                   (08:00 - 17:00 WIB).
                 </p>
-                <p className="text-sm text-blue-600">+62 8XX-XXXX-XXXX</p>
+                <p className="text-sm text-blue-600">+62 85117547101</p>
+              </div>
+            </div>
+
+            {/* Bagian Instagram */}
+            <div className="flex items-start text-left">
+              <Instagram size={24} className="text-gray-600 mr-4 mt-1" />
+              <div>
+                <h2 className="text-base font-medium text-black">Instagram</h2>
+                <p className="text-sm text-gray-700">
+                  Hubungi kami melalui Instagram.
+                </p>
+                <a
+                  href="https://www.instagram.com/kodinesia.id/"
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  kodinesia.id
+                </a>
               </div>
             </div>
           </div>

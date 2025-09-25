@@ -99,6 +99,9 @@ const getChecklistDescription = (item: any): string => {
     "Tidak ada keterangan"
   );
 };
+const getChecklistStatus = (item: any): string => {
+  return item.checklistStatus?.replace(/_/g, " ") || "Tidak ada keterangan";
+};
 
 // ====================================================================
 //                         PDF EXPORT HELPERS
@@ -236,7 +239,7 @@ const generateChecklistSection = (
     getChecklistDescription(item),
     item.user?.name || "N/A",
     item.user?.role || "N/A",
-    item.checklistStatus || "TERLAKSANA",
+    getChecklistStatus(item),
   ]);
   const tableOptions = {
     columnStyles: {
@@ -921,7 +924,7 @@ const SPBUDetail: React.FC<SPBUDetailProps> = ({ spbu, onBack }) => {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          {getChecklistDescription(item)}
+                          {getChecklistDescription(item).replace(/_/g, " ")}
                         </td>
                         <td className="px-4 py-3 font-medium text-slate-800">
                           {item.user?.name || "N/A"}
@@ -930,7 +933,7 @@ const SPBUDetail: React.FC<SPBUDetailProps> = ({ spbu, onBack }) => {
                           {item.user?.role || "N/A"}
                         </td>
                         <td className="px-4 py-3 font-medium">
-                          {item.checklistStatus || "TERLAKSANA"}
+                          {getChecklistStatus(item)}
                         </td>
                       </tr>
                     ))

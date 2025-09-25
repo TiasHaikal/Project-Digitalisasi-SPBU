@@ -109,6 +109,7 @@ export default function LoginPage() {
             >
               Email
             </label>
+            {/* Form Input */}
             <Input
               id="email"
               placeholder="email@gmail.com"
@@ -154,3 +155,7 @@ export default function LoginPage() {
     </div>
   );
 }
+// By Kodinesia
+// Afrando Sharein Ramadhan
+// Tias Haikal Mulyana
+// Tirta Rizki Ramadhan
